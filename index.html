@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Biblioteca PDF</title>
+
+<style>
+body{margin:0;background:#111;color:#fff;font-family:Arial}
+
+/* HEADER */
+header{background:#000;padding:20px;text-align:center}
+
+/* GRILLA */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:20px;
+  padding:20px
+}
+
+.card{
+  background:#222;
+  border-radius:10px;
+  padding:15px;
+  text-align:center;
+  cursor:pointer;
+}
+
+.card:hover{background:#333}
+
+button{
+  padding:8px 12px;
+  margin-top:10px;
+  cursor:pointer;
+  border:none;
+  border-radius:5px;
+}
+
+/* VISTAS */
+#booksView{display:none}
+
+/* VISOR PDF */
+#viewer{
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  z-index:999;
+  flex-direction:column;
+}
+
+#viewerHeader{
+  background:#111;
+  padding:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+#pdfFrame{
+  flex:1;
+  width:100%;
+  border:none;
+}
+
+#authorName{
+    color:#FFD700;
+    text-align:center;
+    font-size:32px;
+}
+
+.tituloBio{
+    color:#00BFFF;
+    font-size:24px;
+}
+
+.tituloLibro{
+    color:#7CFC00;
+    font-size:20px;
+    margin:12px 0;
+
+}
+
+header h1{
+    color:#FFD700;
+    font-size:40px;
+    text-shadow:2px 2px 8px #000;
+}
+
+.logo{
+    width:180px;      /* Cambiá este valor a gusto */
+    height:auto;
+    display:block;
+    margin:15px auto;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+<h1>✨📖📚 Biblioteca PDF</h1>
+
+<p>Lectura integrada</p>
+<p>By Pablo Gagliano</p>
+<br>
+<img src="img/logo.png" class="logo" alt="Logo logo">
+
+</header>
+
+<!-- AUTORES -->
+<div id="authors" class="grid"></div>
+
+<!-- LIBROS -->
+<div id="booksView">
+<button onclick="volver()">⬅ Volver</button>
+
+<h2 id="authorName"></h2>
+
+<div id="bioAutor" style="
+max-width:900px;
+margin:20px auto;
+background:#1d1d1d;
+padding:20px;
+border-radius:10px;
+display:none;
+line-height:1.6;
+text-align:left;">
+</div>
+
+
+<div id="books" class="grid"></div>
+</div>
+
+<!-- VISOR PDF -->
+<div id="viewer">
+  <div id="viewerHeader">
+    <span id="pdfTitle">Lector PDF</span>
+    <button onclick="cerrarPDF()">✖ Cerrar</button>
+  </div>
+  <iframe id="pdfFrame"></iframe>
+</div>
+
+<script>
+
+const biblioteca ={
+  "J. R. R. Tolkien":{
+    bio: `El señor de los anillos<br>
+La saga de J.R.R. Tolkien relata la lucha de la Tierra Media contra el Señor Oscuro Sauron. Comienza con El Hobbit, donde el hobbit Bilbo Bolsón encuentra un Anillo Mágico. Continúa con El Señor de los Anillos, donde Frodo, su sobrino, debe destruir el Anillo en el Monte del Destino para salvar al mundo..`,
+
+    libros: [
+
+ "El Hobbit", "La comunidad del anillo", "Las dos torres", "El retorno del rey"]
+
+ }
+
+};
+
+const authors = document.getElementById("authors");
+const booksView = document.getElementById("booksView");
+const authorName = document.getElementById("authorName");
+const books = document.getElementById("books");
+
+const viewer = document.getElementById("viewer");
+const pdfFrame = document.getElementById("pdfFrame");
+const pdfTitle = document.getElementById("pdfTitle");
+
+/* CARGA AUTORES */
+for (const autor in biblioteca) {
+  authors.innerHTML += `
+    <div class="card" onclick="abrirAutor('${autor}')">
+      <h3>${autor}</h3>
+    </div>`;
+}
+
+function abrirAutor(autor) {
+
+  authors.style.display = "none";
+  booksView.style.display = "block";
+
+  authorName.textContent = autor;
+
+  const bio = document.getElementById("bioAutor");
+
+  bio.innerHTML = `
+      <img src="autores/${autor}/autor.jpg"
+           style="width:180px;
+                  float:left;
+                  margin-right:20px;
+                  border-radius:10px;"
+           onerror="this.style.display='none'">
+
+      <h3 class="tituloBio">Saga</h3>
+
+      <p>${biblioteca[autor].bio}</p>
+
+      <div style="clear:both"></div>
+  `;
+
+  bio.style.display="block";
+
+  books.innerHTML="";
+
+  biblioteca[autor].libros.forEach(libro=>{
+
+      const ruta=`autores/${autor}/${libro}`;
+
+      books.innerHTML+=`
+
+      <div class="card">
+
+          <img src="${ruta}.jpg"
+               style="width:100%;border-radius:8px"
+               onerror="this.src='https://via.placeholder.com/150x220?text=Sin+Imagen'">
+
+          <h4 class="tituloLibro">${libro}</h4>
+
+          <button onclick="abrirPDF('${ruta}.pdf','${libro}')">
+
+              📄 Leer PDF
+
+          </button>
+
+      </div>
+
+      `;
+
+  });
+
+}
+/* ABRIR VISOR PDF */
+function abrirPDF(url, titulo) {
+  pdfFrame.src = url;
+  pdfTitle.textContent = titulo;
+  viewer.style.display = "flex";
+}
+
+/* CERRAR VISOR */
+function cerrarPDF() {
+  viewer.style.display = "none";
+  pdfFrame.src = "";
+}
+
+/* VOLVER */
+function volver() {
+  booksView.style.display = "none";
+  authors.style.display = "grid";
+}
+
+</script>
+
+</body>
+</html>
