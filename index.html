@@ -2,258 +2,883 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Biblioteca PDF</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redondos - Discografía Interactiva</title>
 <style>
-body{margin:0;background:#111;color:#fff;font-family:Arial}
-
-/* HEADER */
-header{background:#000;padding:20px;text-align:center}
-
-/* GRILLA */
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
-  gap:20px;
-  padding:20px
+body{margin:0;background:#000000;color:#ffffff;font-family:Arial}
+header{text-align:center;padding:20px;background:#000000}
+.logo{display:block;margin:20px auto;max-width:220px;border-radius:50%}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:15px;padding:20px}
+.card{background:#1b1b1b;border-radius:10px;padding:10px;cursor:pointer;text-align:center}
+.card img{width:100%;height:200px;object-fit:cover}
+.player{display:flex;gap:20px;padding:20px;background:#111;flex-wrap:wrap}
+.songsLyrics{
+display:flex;
+gap:20px;
+align-items:flex-start;
 }
 
-.card{
-  background:#222;
-  border-radius:10px;
-  padding:15px;
-  text-align:center;
-  cursor:pointer;
+.songsPanel{
+width:35%;
 }
 
-.card:hover{background:#333}
-
-button{
-  padding:8px 12px;
-  margin-top:10px;
-  cursor:pointer;
-  border:none;
-  border-radius:5px;
-}
-
-/* VISTAS */
-#booksView{display:none}
-
-/* VISOR PDF */
-#viewer{
-  display:none;
-  position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  background:#000;
-  z-index:999;
-  flex-direction:column;
-}
-
-#viewerHeader{
-  background:#111;
-  padding:10px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-#pdfFrame{
-  flex:1;
-  width:100%;
-  border:none;
-}
-
-#authorName{
-    color:#FFD700;
-    text-align:center;
-    font-size:32px;
-}
-
-.tituloBio{
-    color:#00BFFF;
-    font-size:24px;
-}
-
-.tituloLibro{
-    color:#7CFC00;
-    font-size:20px;
-    margin:12px 0;
-
-}
-
-header h1{
-    color:#FFD700;
-    font-size:40px;
-    text-shadow:2px 2px 8px #000;
-}
-
-.logo{
-    width:180px;      /* Cambiá este valor a gusto */
-    height:auto;
-    display:block;
-    margin:15px auto;
-}
-
-</style>
-
-</head>
-
-<body>
-
-<header>
-<h1>✨📖📚 Biblioteca PDF</h1>
-
-<p>Lectura integrada</p>
-<p>By Pablo Gagliano</p>
-<br>
-<img src="img/logo.png" class="logo" alt="Logo logo">
-
-</header>
-
-<!-- AUTORES -->
-<div id="authors" class="grid"></div>
-
-<!-- LIBROS -->
-<div id="booksView">
-<button onclick="volver()">⬅ Volver</button>
-
-<h2 id="authorName"></h2>
-
-<div id="bioAutor" style="
-max-width:900px;
-margin:20px auto;
-background:#1d1d1d;
-padding:20px;
+#lyricsBox{
+width:65%;
+background:#111;
 border-radius:10px;
-display:none;
-line-height:1.6;
-text-align:left;">
+padding:15px;
+max-height:500px;
+overflow-y:auto;
+}
+
+#songs{
+margin:0;
+padding-left:20px;
+}
+#cover{width:260px;height:260px;border-radius:50%;object-fit:cover}
+.spin{animation:spin 6s linear infinite}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+#songs li{padding:6px;cursor:pointer}
+.controls button{padding:8px;margin:3px}
+audio{width:100%}
+#lyricsBox h3{color:#ff0000;margin-top:0}
+
+#lyrics{white-space:pre-wrap;line-height:1.8;font-size:20px;color:yellow}
+</style>
+</head>
+<body>
+<header><h2>Patricio Rey y sus Redonditos de Ricota</h2>
+    <p>Discografía interactiva</p>
+    <p> By Pablo Gagliano</p>
+    <br>
+<img src="img/logo_pr.png" class="logo" alt="Logo PR">
+</header>
+<div id="albums" class="grid"></div>
+<div class="player">
+<div><img id="cover" src="img/gulp.jpg"></div>
+<div style="flex:1">
+<h2 id="albumTitle">Seleccione un disco</h2>
+
+<div class="songsLyrics">
+
+<div class="songsPanel">
+<ul id="songs"></ul>
 </div>
 
-
-<div id="books" class="grid"></div>
+<div id="lyricsBox">
+<h3>Letra</h3>
+<pre id="lyrics">Seleccione una canción</pre>
 </div>
 
-<!-- VISOR PDF -->
-<div id="viewer">
-  <div id="viewerHeader">
-    <span id="pdfTitle">Lector PDF</span>
-    <button onclick="cerrarPDF()">✖ Cerrar</button>
-  </div>
-  <iframe id="pdfFrame"></iframe>
+</div>
+
+<div class="controls">
+<button onclick="prevSong()">⏮</button>
+<button onclick="playSong()">▶</button>
+<button onclick="pauseSong()">⏸</button>
+<button onclick="nextSong()">⏭</button>
+</div>
+<br>
+<audio id="audio" controls></audio>
+</div>
+
 </div>
 
 <script>
+const audio = document.getElementById("audio");
+const cover = document.getElementById("cover");
 
-const biblioteca ={
-  "J. R. R. Tolkien":{
-    bio: `El señor de los anillos<br>
-La saga de J.R.R. Tolkien relata la lucha de la Tierra Media contra el Señor Oscuro Sauron. Comienza con El Hobbit, donde el hobbit Bilbo Bolsón encuentra un Anillo Mágico. Continúa con El Señor de los Anillos, donde Frodo, su sobrino, debe destruir el Anillo en el Monte del Destino para salvar al mundo..`,
+const discos={
+"Gulp! (1985)":{img:"img/Gulp.jpg",folder:"Gulp",songs:["Barbazul versus el amor letal","La bestia pop","Roto y mal parado","Pierre el vitricida","Unos pocos peligros sensatos","Yo no me cai del cielo","Te voy a atornillar","Superlogico","Ñam fri fruli fali fru","El infierno esta encantador esta noche","Criminal mambo"]},
+"Oktubre (1986)":{img:"img/Oktubre.jpg",folder:"Oktubre",songs:["Fuegos de octubre","Preso en mi ciudad","Musica para pastillas","Semen Up","Divina TV Fuhrer","Motor psico","Jijiji","Cancion para naufragios","Ya nadie va a escuchar tu remera"]},
+"Un baión para el ojo idiota (1988)":{img:"img/Un baión para el ojo idiota.jpg",folder:"Un baión para el ojo idiota",songs:["Masacre en el Puticlub","Noticias de ayer","Aquella solitaria vaca cubana","Todo preso es politico","Vencedores vencidos","Vamos las bandas","Ella debe estar tan linda","Todo un palo"]},
+"Bang! Bang!!… estás liquidado (1989)":{img:"img/Bang! Bang!!… estás liquidado.jpg",folder:"Bang! Bang!!… estás liquidado",songs:["Heroe del whisky","Rock para los dientes","La parabellum del buen psicopata","Un Pac-Man en el Savoy","Nadie es perfecto","Esa estrella era mi lujo","Maldicion va a ser un dia hermoso","Ropa sucia","Nuestro amo juega al esclavo"]},
+"La Mosca y la Sopa (1991)":{img:"img/La Mosca y la Sopa.jpg",folder:"La Mosca y la Sopa",songs:["Toxi Taxi","Fusilados por la Cruz Roja","Un poco de amor frances","Mi perro dinamita","Blues de la artilleria","Tarea fina","El pibe de los astilleros","Nueva Roma","Salando las heridas","Queso ruso"]},
+"En Directo (1992)":{img:"img/En Directo.jpg",folder:"En directo",songs:["Nuestro Amor Juega al Esclavo"]},
+};
+const letras={
+"Barbazul versus el amor letal": `
+Esta vez, por fin, la prisión
+Te va a gustar
 
-    libros: [
+El reo semental
+Se va a licuar
 
- "El Hobbit", "La comunidad del anillo", "Las dos torres", "El retorno del rey"]
+Esta prisión
+Gatas lindas, sirenas llenas
+Camisa apretada, pezón radioactivo
 
- }
+Reclamando el botín para la prisión
+Del Dios Prisión, Feliz Prisión
+Del Dios Barbazul de esta prisión
+
+Tu aullido esta vez, quiera Dios, no se va a oír
+En la prisión
+
+¿Puede la virgen labial brillar?
+En risas pillas, manzanas firmes
+
+De viejas feas como monos, puaj
+Y antiguas lobas, pulpas que reviven
+El amor letal de esta prisión
+
+Esta vez, por fin, la prisión
+Te va a gustar
+
+El reo semental se va a licuar
+Esta prisión
+
+Gatas lindas, sirenas llenas
+Camisa apretada, pezón radioactivo
+
+Reclamando el botín para la prisión
+Del Dios Prisión, Feliz Prisión
+Del Dios Barbazul de esta prisión
+
+Tu aullido esta vez, quiera Dios, no se va a oír
+En la prisión
+
+¿Puede la virgen labial brillar?
+En risas pillas, manzanas firmes
+
+De viejas feas como monos, puaj
+Y antiguas lobas, pulpas que reviven
+
+El amor letal de esta prisión`,
+
+"La bestia pop":`
+Mi héroe es la gran bestia pop
+Que enciende, en sueños, la vigilia
+Y antes que cuente diez, dormirá
+
+A brillar, mi amor
+Vamos a brillar, mi amor
+A brillar, mi amor
+Vamos a brillar, mi amor
+
+Mi amigo está grogui sin destilar
+Pero yo sé que hay caballos que
+Se mueren potros sin galopar
+
+A brillar, mi amor
+Vamos a brillar, mi amor
+A brillar, mi amor
+Vamos a brillar, mi amor
+
+Voy a bailar el rock del rico Luna Park
+Y atomizar la butaca y brillar
+Como mi héroe, la gran bestia pop
+
+A brillar, mi amor
+Vamos a brillar, mi amor
+A brillar, mi amor
+Vamos a brillar, mi amor
+
+Mi héroe es la gran bestia pop
+Que enciende, en sueños, la vigilia
+Y antes que cuente diez, dormirá
+
+A brillar, mi amor
+Vamos a brillar, mi amor
+A brillar, mi amor
+Vamos a brillar, mi amor `,
+
+"Roto y mal parado":`
+
+Quemás tu vida en este día
+En esta tibia, tibia fila
+Que más, que más, quemás
+Que más, que más, quemás, tu vida
+¿Cómo te va en estos días
+Humano roto y mal parado
+Que más, que más, quemás
+Que más, que más, quemás, tu vida
+
+¡Fuego, fuego, fuego, fuego, fuego, fuego!
+¡El dia!
+
+Tu loca voluntad humeando
+Graznando fiero y sin estilo
+Que más, que más, quemás
+Que más, que más, quemás, tu vida
+
+¡Fuego, fuego, fuego, fuego, fuego, fuego!
+¡El dia!
+(Le tango)
+
+¡Fuego, fuego, fuego, fuego, fuego, fuego!
+¡Mentiras!
+¡Mentiras!
+¡Mentiras!
+¡Mentiras!
+¡Mentiras!
+Mentiras `,
+
+"Pierre el vitricida":`
+¡Cómo se ríe el gordo Pierre!
+Y rompió el vidrio el gordo Pierre
+Cómo rajó el gordo Pierre
+Y cómo tose el gordo Pierre, Pierre Pierre
+Y cómo ríe el gordo Pierre
+Y cómo tose el gordo Pierre
+Es vitricida el gordo Pierre
+Rompió el vidrio el gordo Pierre, Pierre, Pierre `,
+
+"Unos pocos peligros sensatos":`
+
+Si tus peligros son tan sensatos
+Casi sin arrebatos
+Y sos prudente en la tiniebla
+Y con los gatos
+
+Golpe de suerte, golpe de suerte, ¡eh!
+
+Si vos cuidás que tu animal
+No nos muestre libremente
+Lo que ya sabe del cuento
+De la muerte
+
+Golpe de suerte, golpe de suerte, ¡eh!
+
+Todo ese estúpido viaje de amor
+Por los altos sólidos
+Sólidos, bólidos
+Que están tachando tu suerte, ¡uh `,
+
+"Yo no me cai del cielo":`
+
+Nena, no quiero perderte
+No pases de todo
+Que no está tan mal
+
+Yo no me caí del cielo
+Pero, sí, de un bar muy triste
+
+Nena, nena, hay mucho olor a gato
+Nena, no quiero perderte
+Si querés, podés apostar
+
+Nena, hay alegrías y alegrías
+Hay mucho vino malicioso
+Y poco vino del mejor
+
+Nena, no quiero perderte
+No pases de todo
+Que no está tan mal
+
+Nena, no quiero perderte, no, no, no
+No pases de todo, no, no
+Que no está tan mal
+
+Yo no me caí del cielo
+Pero, sí, de un bar muy triste
+
+Nena, nena, hay mucho olor a gato
+Nena, no quiero perderte
+Si querés, podés apostar
+
+Nena, hay alegrías y alegrías
+Hay mucho vino malicioso
+Y poco vino del mejor `,
+
+"Te voy a atornillar":`
+
+Te aprieto mucho, te empleo mucho
+Te sirvo mucho, te piso mucho
+(¿Cómo puede ser que te alboroten mis placeres?)
+Te espumo mucho, te asfixio mucho
+Te impacto mucho, te siento mucho
+
+Yo te quisiera asaltar
+Te voy a atornillar
+Te voy a herir un poquito más
+
+Te aprieto mucho, te empleo mucho
+Te asfixio mucho
+(¿Cómo puede ser que te alboroten mis placeres?)
+
+Te sirvo mucho, te piso mucho
+Te aprie-, te aprie-, te aprie-, te aprie-, te aprie-, te aprieto mucho
+
+Yo te quisiera asaltar
+Te voy a atornillar
+Te voy a herir un poquito más
+
+Yo te quisiera asaltar
+Te voy a atornillar
+Te voy a herir un poquito más
+
+Te aprieto mucho, te empleo mucho
+Te asfixio mucho
+(¿Cómo puede ser que te alboroten mis placeres?)
+Te espumo mucho, te asfixio mucho
+Te aprie-, te aprie-, te aprie-, te aprie-, te aprie-, te aprieto mucho
+
+Yo te quisiera asaltar
+Te voy a atornillar
+Te voy a herir un poquito más `,
+
+"Superlogico":`
+Ahí van los machos para consumar
+Una hermosa dotación vital
+­¡Superlógico! ­ (¡Sí!) ­
+¡Superlógico! ­ (¡Sí!)
+­¡Superlógico! ­ (¡Sí! ¡Sí! ¡Sí!)
+
+El club de mantis muy nervioso está
+Esas hembras no son dulces no
+­¡Superlógico! ­ (¡Sí! ­)
+¡Superlógico! ­ (¡Sí!)
+­¡Superlógico! ­ (¡Sí! ¡Sí! ¡Sí!)
+
+Tal orgía van a banquetear
+Sin descanso van a devorar­
+¡Super rígido! ­ (¡Sí!)
+­¡Super rígido! ­ (¡Sí!) ­
+­¡Super rígido! ­ (¡Sí! ¡Sí! ¡Sí!)
+
+El rostro se comienza a afiebrar
+Esas hembras no son dulces no
+­¡Superlógico! ­ (¡Sí!)
+­¡Superlógico! ­ (¡Sí!)
+­¡Superlógico! ­ (¡Sí! ¡Sí! ¡Sí!)
+
+(­¡Superlógico!) ¡Sí!
+(­¡Superlógico!) ¡Sí!
+(­¡Superlógico!)
+
+¡Superlógico! ­ (¡Sí!)
+­¡Superlógico! ­ (¡Sí!)
+­¡Superlógico! ­ (¡Sí! ¡Sí! ¡Sí!)
+
+¡Superlógico! ­ (¡Sí!)
+­¡Superlógico! (¡Sí!)
+­¡Superlógico!
+
+­¡Super lógico! `,
+
+"Ñam fri fruli fali fru":`
+
+Voy a cuidar de mi amorcito
+Que está borracha por demás otra vez
+Me llama nene, doctor
+Yo no la cambio por nada
+Cuando empieza a cabalgar
+
+Voy a cuidar de mi amorcito
+Que mordió el vidrio por demás otra vez
+Me llama nene-sifón
+Cuando me muerde alocada
+¡Ñam fri frufi fali fru!
+
+¡Ñam fri frufi fali fru fi ñam fi fru!
+¡Ñam fri frufi fali fru fi ñam fi fru!
+Yo no la cambio por nada
+Cuando empieza a cabalgar
+
+Voy a cuidar de mi amorcito
+Que está borracha por demás otra vez
+Me llama nene-doctor
+Cuando me muerde alocada
+¡Ñam fri frufi fali fru!
+
+Voy a cuidar de mi amorcito
+Que mordió el vidrio por demás otra vez
+Me llama nene-sifón
+Yo no la cambio por nada
+Cuando empieza a cabalgar
+
+¡Ñam fri frufi fali fru fi ñam fi fru!
+¡Ñam fri frufi fali fru fi ñam fi fru!
+Yo no la cambio por nada
+Cuando empieza a cabalgar
+Cuando me muerde alocada
+¡Ñam fri frufi fali fru!
+
+Yo no la cambio por nada
+¡Ñam fri frufi fali fru! `,
+
+"El infierno esta encantador esta noche":`
+
+¿Son, por acaso, ustedes, hoy
+Un público respetable?
+¿Pueden, acaso, beber el vino
+Por ustedes envasado?
+
+¿Puede alguien decirme
+Me voy a comer tu dolor
+Y repetirme
+Te voy a salvar esta noche?
+
+Que el infierno está encantador
+Este infierno está embriagador
+Esta noche está encantador
+Tu infierno está encantador
+¡Esta noche!
+
+¿Por qué no te dejás de pensar
+En labios que besan frío
+Para cerrar un ojo y ver
+Cuántos cuernos tiene el diablo?
+
+¿Puede alguien decirme
+Me voy a comer tu dolor
+Y repetirme
+Te voy a salvar esta noche?
+
+Que el infierno está encantador
+Este infierno está embriagador
+Esta noche está encantador
+Tu infierno está encantador
+¡Esta noche!
+
+¿Por qué no te dejás de pensar
+En labios que besan frío
+Para cerrar un ojo y ver
+Cuántos cuernos tiene el diablo?
+
+¿Puede alguien decirme
+Me voy a comer tu dolor
+Y repetirme
+Te voy a salvar esta noche?
+
+Que el infierno está encantador
+Este infierno está embriagador
+Esta noche está encantador
+Tu infierno está encantador
+¡Esta noche! `,
+
+"Criminal mambo":`
+
+Es un criminal mambo
+Es un criminal mambo
+Es un criminal mambo
+Es un criminal mambo
+
+¡Criminal, criminal mambo!
+¡Criminal, criminal mambo!
+¡Criminal, criminal mambo!
+¡Criminal, criminal mambo!
+
+¡Criminal, criminal mambo!
+¡Criminal, criminal mambo!
+¡Criminal, criminal mambo!
+¡Mambo, mambo!
+
+Sonato un raggio dal capo al piede
+De cuore a faccio tutto da me
+Me beso a bolo con precizione
+E solo copio la mía lezione
+¡Banzai!
+¡Banzai!
+
+¡Criminal, criminal mambo!
+¡Criminal, criminal mambo!
+¡Criminal, criminal mambo!
+¡Criminal, criminal mambo!
+
+¡Criminal, criminal mambo!
+¡Criminal, criminal mambo!
+¡Criminal, criminal mambo!
+¡Criminal! (Mambo)
+¡Criminal! (Mambo)
+¡Criminal! (Mambo)
+(Mambo, mambo, mambo, mambo) `,
+
+"Fuegos de octubre":`
+De regreso a octubre
+Desde octubre
+Sin un estandarte
+De mi parte
+Te prefiero igual
+Internacional
+
+¡Ra!
+
+De regreso a octubre
+Desde octubre
+Sin un estandarte
+De mi parte
+Te prefiero igual
+Internacional `,
+
+"Preso en mi ciudad":`
+
+Una vez, le hice el amor
+A un Drácula con tacones
+Era un pop violento que guió
+El gran estilo siniestro
+
+Ahora ya no llora
+Preso en mi ciudad (ah-ah-ah-ah)
+Casi ya no llora
+¡Atrapado en libertad!
+
+Practicamos tiro al pichón
+Y un test para ir al espacio
+Con mi delicioso campeón
+Y el rock, como todo llanto
+
+Ahora ya no llora
+Preso en mi ciudad (ah-ah-ah-ah)
+Casi ya no llora
+¡Atrapado en libertad!
+
+Fue un esclavo sensible y chillón
+Y fácil para el gatillo
+Atrapó un beso bienhechor
+Con ojos al rojo vivo
+
+Una vez le hice el amor
+A un Drácula con tacones
+Era un pop violento que guió
+El gran estilo siniestro
+
+Ahora ya no llora
+Preso en mi ciudad (ah-ah-ah-ah)
+Casi ya no llora
+¡Atrapado en libertad!
+
+Practicamos tiro al pichón
+Y un test para ir al espacio
+Con mi delicioso campeón
+Y el rock como todo llanto
+
+Ahora ya no llora
+Preso en mi ciudad (ah-ah-ah-ah)
+Casi ya no llora
+¡Atrapado en libertad! `,
+
+"Musica para pastillas":`
+
+Flacas gimnastas de América
+Secas, austeras, soviéticas
+
+Muchachitas fatales
+En blancos zoquetes chinos
+Son todas joyas, patricias de amor
+
+La más hermosa niña del mundo
+Puede dar solo lo que tiene para dar
+
+Música para pastillas (rápido)
+Y mucha cuchillería
+Pará, mi amor, esto está muy Shanghái
+
+Rockeros, bonitos, educaditos
+Con grandes gastos, educaditos
+
+Emboquen el tiro libre
+Que los buenos volvieron
+Y están rodando cine de terror `,
+
+
+"Semen Up":`
+
+Ella tiene una forma de hacerme creer
+Que es, para mí, la mejor manzana
+Su estilo desprecia mi soñar
+Con ella, soy rico gratis
+
+La veo casi como un demonio
+Y rasco la alfombra por su amor, ay
+
+La veo casi como un demonio
+Y rasco la alfombra por su amor, ay
+
+Saludable y católica
+No le gusta que ande solo
+Se ha montado en mi nariz
+Y es, para mí, la mejor fruta
+
+La veo casi como un demonio
+Y rasco la alfombra por su amor, ay
+
+(Semen-Up)
+
+Ella tiene una forma de hacerme creer
+Que es para mí la mejor fruta
+Su estilo desprecia mi soñar
+Con ella soy rico gratis
+
+La veo casi como un demonio
+Y rasco la alfombra por su amor, ay
+
+La veo casi como un demonio
+Y rasco la alfombra por su amor, ay `,
+
+"Divina TV Fuhrer":`
+
+¡Mi TV. Führer!
+
+Me estoy por ahogar, me voy a pique, glú-glú
+Me está por hundir mi fiel fantasma, bu-bu
+
+Si no me protege el empleado mayor
+Que proyecta todo el tiempo mi televisor
+Será promovido para Navidad
+¿Cómo no se nos ocurrió? ¡Uh, uh!
+
+Voy a exagerar
+Mi fiebre no es tan alta
+Esta es la cita peor
+Es una cita a ciegas
+
+Al planeta, un bombazo le vamos a dar
+Para que no nos moleste nunca, nunca más
+Será promovido para Navidad
+¿Cómo no se nos ocurrió? ¡Uh, uh!
+
+¿No vas a esperar que enfríen a tu amigo?
+Si ya conocés la forma novedosa
+
+Divina TV. Führer, mi amor
+Donde quiera que vaya, Eveready estará
+Será promovida para Navidad
+¿Cómo no se nos ocurrió? ¡Uh, uh!
+
+Me estoy por ahogar, me voy a pique, glú-glú
+Me está por hundir mi fiel fantasma, bu-bu
+
+Si no me protege el empleado mayor
+Que proyecta todo el tiempo mi televisor
+Será promovido para Navidad
+¿Cómo no se nos ocurrió? ¡Uh, uh! `,
+
+"Motor psico":`
+
+Siempre tengo a mi lado a mi Dios
+Así, me das más
+Un susurro muy especial
+Así, me das más
+
+Motor Psico: El mercado de todo amor
+Lo que debes, ¿cómo puedes quedártelo?
+
+Junto a la hemoglobina, me fui
+Y ya no sangro más
+De la nada a la gloria, me voy
+Así, me das más
+
+Motor Psico: El mercado de todo amor
+Lo que debes, ¿cómo puedes quedártelo?
+
+Voy jugando de acuerdo al dolor
+Fichando de más
+Mi Dios no juega dados, quizás esté a mi favor
+
+Motor Psico: El mercado de todo amor
+Lo que debes, ¿cómo puedes quedártelo?
+
+Siempre tengo a mi lado a mi Dios
+Así, me das más
+Un susurro muy especial
+Así, me das más
+
+Motor Psico: El mercado de todo amor
+Lo que debes, ¿cómo puedes quedártelo? `, 
+
+"Jijiji":`
+
+En este film velado en blanca noche
+El hijo tenaz de tu enemigo
+El muy verdugo cena distinguido
+Una noche de cristal que se hace añicos
+
+No lo soñé, yeh
+Se enderezó y brindó a tu suerte
+No lo soñé, yeh
+Y se ofreció mejor que nunca
+
+No mires, por favor
+Y no prendas la luz
+La imagen te desfiguró
+
+Este film da una imagen exquisita
+Esos chicos son como bombas pequeñitas
+El peor camino a la cueva del perico
+Para tipos que no duermen por la noche
+
+No lo soñé, yeh
+Ibas corriendo a la deriva
+No lo soñé, yeh
+Los ojos ciegos bien abiertos
+
+No mires, por favor
+Y no prendas la luz
+La imagen te desfiguró
+
+El montaje final es muy curioso
+Es, en verdad, realmente entretenido
+Vas en la oscura multitud desprevenido
+Tiranizando a quienes te han querido
+
+No lo soñé, yeh
+Se enderezó y brindó a tu suerte
+No lo soñé, yeh
+Y se ofreció mejor que nunca
+
+No lo soñé, yeh
+Ibas corriendo a la deriva
+No lo soñé, yeh
+Los ojos ciegos bien abiertos
+
+No mires, por favor
+Y no prendas la luz
+La imagen te desfiguró-uó-uó-uó-uó
+
+¿Ya ves?
+Ahí está Chérnobyl, Chérnobyl
+Chérnobyl, Chérnobyl
+Chérnobyl, Chérnobyl `,
+
+
+"Cancion para naufragios":`
+
+
+Es tan chiflado y obnubilado que puede ser
+Tan caprichoso y novedoso que puede ser
+Bombas de aquí para allá
+Puede ser, es irreal
+
+Ya no estás solo
+Estamos todos en naufragar
+Son seis minutos y nuestra "mami" va a contestar
+"Mami" elimina el error, de que vos sos capaz
+
+Es tan chiflado y obnubilado que puede ser
+Tan caprichoso y tan sonado que puede ser
+Rayos de aquí para allá
+Que linda calma dan
+
+Ya no estás solo
+Estamos todos en naufragar
+Son seis minutos y nuestra "mami" va a contestar
+"Mami" elimina el error, de que vos sos capaz
+
+Preso en Mi Ciudad
+Patricio Rey y sus Redonditos de Ricota
+Música para Pastillas
+Patricio Rey y sus Redonditos de Ricota
+Semen-Up
+Patricio Rey y sus Redonditos de Ricota
+
+Ya no estás solo
+Estamos todos en naufragar
+Son seis minutos y nuestra "mami" va a contestar
+"Mami" elimina el error, de que vos sos capaz `,
+
+"Ya nadie va a escuchar tu remera":`
+
+
+Esto es efímero, ahora efímero
+Como corre el tiempo
+Tic-tac efímero, luces efímeras
+Pero te creo
+
+Es casi hipnótico, el tic no alcanza a tac
+Ni me moja el paladar
+El grito efímero, el ritmo efímero
+Pero te creo
+
+Un último secuestro, no
+El de tu estado de ánimo, no
+Tu aliento vas a proteger
+En este día y cada día
+
+Esto es efímero, ahora efímero
+Como corre el tiempo
+Tic-tac efímero, luces efímeras
+Pero te creo
+
+Es casi hipnótico, el tic no alcanza a tac
+Ni me moja el paladar
+El grito efímero, el ritmo efímero
+Pero te creo
+
+Un último secuestro, no
+El de tu estado de ánimo, no
+Tu aliento vas a proteger
+En este día y cada día
+
+
+Al reloj lo del reloj
+Y alrededor del reloj, tu estado de ánimo
+Al reloj lo del reloj
+Y alrededor del reloj, tu estado de ánimo
+
+
+Wuh-uh, wuh-uh-uh `,
+
+
 
 };
 
-const authors = document.getElementById("authors");
-const booksView = document.getElementById("booksView");
-const authorName = document.getElementById("authorName");
-const books = document.getElementById("books");
+let currentAlbum=null,currentSong=0;
+const albums=document.getElementById("albums");
+for(let n in discos){albums.innerHTML+=`<div class='card' onclick="openAlbum('${n}')"><img src='${discos[n].img}'><h3>${n}</h3></div>`}
 
-const viewer = document.getElementById("viewer");
-const pdfFrame = document.getElementById("pdfFrame");
-const pdfTitle = document.getElementById("pdfTitle");
 
-/* CARGA AUTORES */
-for (const autor in biblioteca) {
-  authors.innerHTML += `
-    <div class="card" onclick="abrirAutor('${autor}')">
-      <h3>${autor}</h3>
-    </div>`;
+function openAlbum(n){
+currentAlbum=n;
+currentSong=0;
+
+document.getElementById('albumTitle').innerText=n;
+document.getElementById('cover').src=discos[n].img;
+
+let ul=document.getElementById('songs');
+ul.innerHTML='';
+
+discos[n].songs.forEach((s,i)=>{
+let li=document.createElement('li');
+li.textContent=(i+1)+'. '+s;
+li.onclick=()=>loadSong(i);
+ul.appendChild(li);
+});
+
+if(discos[n].songs.length>0){
+loadSong(0);
 }
 
-function abrirAutor(autor) {
-
-  authors.style.display = "none";
-  booksView.style.display = "block";
-
-  authorName.textContent = autor;
-
-  const bio = document.getElementById("bioAutor");
-
-  bio.innerHTML = `
-      <img src="autores/${autor}/autor.jpg"
-           style="width:180px;
-                  float:left;
-                  margin-right:20px;
-                  border-radius:10px;"
-           onerror="this.style.display='none'">
-
-      <h3 class="tituloBio">Saga</h3>
-
-      <p>${biblioteca[autor].bio}</p>
-
-      <div style="clear:both"></div>
-  `;
-
-  bio.style.display="block";
-
-  books.innerHTML="";
-
-  biblioteca[autor].libros.forEach(libro=>{
-
-      const ruta=`autores/${autor}/${libro}`;
-
-      books.innerHTML+=`
-
-      <div class="card">
-
-          <img src="${ruta}.jpg"
-               style="width:100%;border-radius:8px"
-               onerror="this.src='https://via.placeholder.com/150x220?text=Sin+Imagen'">
-
-          <h4 class="tituloLibro">${libro}</h4>
-
-          <button onclick="abrirPDF('${ruta}.pdf','${libro}')">
-
-              📄 Leer PDF
-
-          </button>
-
-      </div>
-
-      `;
-
-  });
-
-}
-/* ABRIR VISOR PDF */
-function abrirPDF(url, titulo) {
-  pdfFrame.src = url;
-  pdfTitle.textContent = titulo;
-  viewer.style.display = "flex";
+document.querySelector('.player').scrollIntoView({
+    behavior:'smooth'
+});
 }
 
-/* CERRAR VISOR */
-function cerrarPDF() {
-  viewer.style.display = "none";
-  pdfFrame.src = "";
+
+
+function loadSong(i){
+    currentSong = i;
+
+    let d = discos[currentAlbum];
+    let num = String(i+1).padStart(2,'0');
+
+    audio.pause();              // opcional pero recomendado
+   audio.src = `mp3/${d.folder}/${d.songs[i]}.mp3`;
+
+    audio.load();               // fuerza reinicio del audio
+    audio.currentTime = 0;      // empieza desde 0
+
+    audio.play();
+
+    cover.classList.add('spin');
+
+    document.getElementById('lyrics').textContent =
+        letras[d.songs[i]] || 'Letra no disponible';
+
+requestAnimationFrame(() => {
+    document.getElementById('lyricsBox').scrollTop = 0;
+});
+
+}
+function pauseSong(){audio.pause();cover.classList.remove('spin');}
+function playSong(){
+audio.play();
+cover.classList.add('spin');
 }
 
-/* VOLVER */
-function volver() {
-  booksView.style.display = "none";
-  authors.style.display = "grid";
-}
-
+function nextSong(){if(currentAlbum){let d=discos[currentAlbum];loadSong((currentSong+1)%d.songs.length);}}
+function prevSong(){if(currentAlbum){let d=discos[currentAlbum];loadSong((currentSong-1+d.songs.length)%d.songs.length);}}
+audio.addEventListener('ended',nextSong);
 </script>
-
-</body>
-</html>
+</body></html>
